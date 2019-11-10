@@ -8,6 +8,11 @@ namespace DocumentTranslatorApi
     {
         /// <summary>
         /// Splits the list.
+        ///
+        /// Based on method `SplitList` (line 851 onwards) in
+        /// TranslationAssistant.Business/DocumentTranslationManager.cs in
+        /// MicrosoftTranslator/DocumentTranslator
+        /// </summary>
         /// </summary>
         /// <param name="values">
         ///  The values to be split.

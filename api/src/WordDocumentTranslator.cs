@@ -17,7 +17,11 @@ namespace DocumentTranslatorApi
         }
 
         /// <summary>
-        /// Based on method `ProcessWordDocument` in TranslationAssistant.Business/DocumentTranslationManager.cs line 726 onwards
+        /// Translates an PowerPoint document
+        ///
+        /// Based on method `ProcessWordDocument` (line 726 onwards) in
+        /// TranslationAssistant.Business/DocumentTranslationManager.cs in
+        /// MicrosoftTranslator/DocumentTranslator
         /// </summary>
         public async Task TranslateDocument(MemoryStream memoryStream, ITextTranslator textTranslator, string to, string from = null, bool ignoreHidden = false)
         {
@@ -27,7 +31,7 @@ namespace DocumentTranslatorApi
                 OpenXmlPowerTools.SimplifyMarkupSettings settings = new OpenXmlPowerTools.SimplifyMarkupSettings
                 {
                     AcceptRevisions = true,
-                    NormalizeXml = true,         //setting this to false reduces translation quality, but if true some documents have XML format errors when opening
+                    NormalizeXml = true, //setting this to false reduces translation quality, but if true some documents have XML format errors when opening
                     RemoveBookmarks = true,
                     RemoveComments = true,
                     RemoveContentControls = true,
@@ -108,7 +112,7 @@ namespace DocumentTranslatorApi
                     }
                 };
 
-                // Throw the exceptions here after the loop completes. 
+                // Throw the exceptions here after the loop completes.
                 if (exceptions.Count > 0)
                 {
                     throw new AggregateException(exceptions);

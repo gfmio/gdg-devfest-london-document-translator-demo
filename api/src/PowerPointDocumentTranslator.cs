@@ -12,7 +12,11 @@ namespace DocumentTranslatorApi
     class PowerPointDocumentTranslator : IDocumentTranslator
     {
         /// <summary>
-        /// Based on method `ProcessPowerPointDocument` in TranslationAssistant.Business/DocumentTranslationManager.cs line 569 onwards
+        /// Translates an PowerPoint document
+        ///
+        /// Based on method `ProcessPowerPointDocument` (line 569 onwards) in
+        /// TranslationAssistant.Business/DocumentTranslationManager.cs in
+        /// MicrosoftTranslator/DocumentTranslator
         /// </summary>
         public async Task TranslateDocument(MemoryStream memoryStream, ITextTranslator textTranslator, string to, string from = null)
         {
@@ -57,7 +61,7 @@ namespace DocumentTranslatorApi
                         // Do Translation
                         var batchesComments = Splitter.SplitList(batch, textTranslator.MaxElements, textTranslator.MaxRequestSize);
 
-                        // Use ConcurrentQueue to enable safe enqueueing from multiple threads. 
+                        // Use ConcurrentQueue to enable safe enqueueing from multiple threads.
                         var exceptions = new ConcurrentQueue<Exception>();
 
                         for (var l = 0; l < batchesComments.Count(); l++)
@@ -94,7 +98,7 @@ namespace DocumentTranslatorApi
                             }
                         }
 
-                        // Throw the exceptions here after the loop completes. 
+                        // Throw the exceptions here after the loop completes.
                         if (exceptions.Count > 0)
                         {
                             throw new AggregateException(exceptions);
@@ -105,7 +109,11 @@ namespace DocumentTranslatorApi
 
         }
 
-        /// Based on method `ReplaceTextsWithTranslation` in TranslationAssistant.Business/DocumentTranslationManager.cs line 667 onwards
+        /// <summary>
+        /// Based on method `ReplaceTextsWithTranslation` (line 667 onwards) in
+        /// TranslationAssistant.Business/DocumentTranslationManager.cs in
+        /// MicrosoftTranslator/DocumentTranslator
+        /// </summary>
         private static async Task ReplaceTextsWithTranslation(List<DocumentFormat.OpenXml.Drawing.Text> texts, ITextTranslator textTranslator, string to, string from)
         {
             if (texts.Count() > 0)
@@ -144,7 +152,7 @@ namespace DocumentTranslatorApi
                     }
                 }
 
-                // Throw the exceptions here after the loop completes. 
+                // Throw the exceptions here after the loop completes.
                 if (exceptions.Count > 0)
                 {
                     throw new AggregateException(exceptions);
@@ -152,7 +160,11 @@ namespace DocumentTranslatorApi
             }
         }
 
-        /// Based on method `ExtractTextContent` in TranslationAssistant.Business/DocumentTranslationManager.cs line 718 onwards
+        /// <summary>
+        /// Based on method `ExtractTextContent` (line 718 onwards) in
+        /// TranslationAssistant.Business/DocumentTranslationManager.cs in
+        /// MicrosoftTranslator/DocumentTranslator
+        /// </summary>
         private static void ExtractTextContent(List<DocumentFormat.OpenXml.Drawing.Text> textList, DocumentFormat.OpenXml.OpenXmlElement element)
         {
             foreach (DocumentFormat.OpenXml.Drawing.Paragraph para in element.Descendants<DocumentFormat.OpenXml.Drawing.Paragraph>())

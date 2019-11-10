@@ -1,4 +1,4 @@
-/** Determines a new file name from the original file and the language pair in the translation  */
+/** Returns a new file name from the original file and the language pair  */
 export default function newFileName(file: File | null, to: string, from: string | null) {
   if (!file) {
     return "";
