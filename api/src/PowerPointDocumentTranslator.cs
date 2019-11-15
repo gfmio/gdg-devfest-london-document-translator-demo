@@ -29,6 +29,7 @@ namespace DocumentTranslatorApi
                 var slideParts = doc.PresentationPart.SlideParts;
                 if (slideParts != null)
                 {
+                    // Find all text items, notes and comments in all slides
                     foreach (var slidePart in slideParts)
                     {
                         if (slidePart.Slide != null)
@@ -50,18 +51,22 @@ namespace DocumentTranslatorApi
                         }
                     }
 
+                    // Translate and replace the text items
                     await ReplaceTextsWithTranslation(texts, textTranslator, to, from);
+                    // Translate and replace the notes
                     await ReplaceTextsWithTranslation(notes, textTranslator, to, from);
 
+                    // Translate and replace the comments
                     if (comments.Count() > 0)
                     {
-                        // Extract Text for Translation
+                        // Extract text from comment for translation
                         var values = comments.Select(text => text.InnerText);
 
                         // Do translation
                         var translatedComments = await textTranslator.TranslateTexts(values, to, from);
 
-                        // Apply translations to document
+                        // Apply translations to document by iterating through both lists and
+                        // replacing the original comment text with its translation
                         using (var commentsEnumerator = comments.GetEnumerator())
                         {
                             using (var translationsEnumerator = translatedComments.GetEnumerator())
@@ -89,13 +94,14 @@ namespace DocumentTranslatorApi
         {
             if (texts.Count() > 0)
             {
-                // Extract Text for Translation
+                // Extract text for translation
                 var values = texts.Select(text => text.Text);
 
                 // Do translation
                 var translations = await textTranslator.TranslateTexts(values, to, from);
 
-                // Apply translated batch to document
+                // Apply translations to document by iterating through both lists and
+                // replacing the original text with its translation
                 using (var textsEnumerator = texts.GetEnumerator())
                 {
                     using (var translationsEnumerator = translations.GetEnumerator())
@@ -110,6 +116,8 @@ namespace DocumentTranslatorApi
         }
 
         /// <summary>
+        /// Extracts the text content from a slide
+        ///
         /// Based on method `ExtractTextContent` (line 718 onwards) in
         /// TranslationAssistant.Business/DocumentTranslationManager.cs in
         /// MicrosoftTranslator/DocumentTranslator

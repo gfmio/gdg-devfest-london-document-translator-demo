@@ -27,7 +27,7 @@ namespace DocumentTranslatorApi
         {
             using (WordprocessingDocument doc = WordprocessingDocument.Open(memoryStream, true))
             {
-
+                // Simply the Word document mark-up
                 OpenXmlPowerTools.SimplifyMarkupSettings settings = new OpenXmlPowerTools.SimplifyMarkupSettings
                 {
                     AcceptRevisions = true,
@@ -52,23 +52,26 @@ namespace DocumentTranslatorApi
                 OpenXmlPowerTools.MarkupSimplifier.SimplifyMarkup(doc, settings);
             }
 
-            List<DocumentFormat.OpenXml.Wordprocessing.Text> texts = new List<DocumentFormat.OpenXml.Wordprocessing.Text>();
+            var texts = new List<Text>();
             using (WordprocessingDocument doc = WordprocessingDocument.Open(memoryStream, true))
             {
+                // Find all text nodes in the document (body, headers & footers)
                 var body = doc.MainDocumentPart.Document.Body;
-                texts.AddRange(body.Descendants<DocumentFormat.OpenXml.Wordprocessing.Text>()
+                texts.AddRange(body.Descendants<Text>()
                     .Where(text => !String.IsNullOrEmpty(text.Text) && text.Text.Length > 0));
 
                 var headers = doc.MainDocumentPart.HeaderParts.Select(p => p.Header);
                 foreach (var header in headers)
                 {
-                    texts.AddRange(header.Descendants<DocumentFormat.OpenXml.Wordprocessing.Text>().Where(text => !String.IsNullOrEmpty(text.Text) && text.Text.Length > 0));
+                    texts.AddRange(header.Descendants<Text>().Where(text =>
+                        !String.IsNullOrEmpty(text.Text) && text.Text.Length > 0));
                 }
 
                 var footers = doc.MainDocumentPart.FooterParts.Select(p => p.Footer);
                 foreach (var footer in footers)
                 {
-                    texts.AddRange(footer.Descendants<DocumentFormat.OpenXml.Wordprocessing.Text>().Where(text => !String.IsNullOrEmpty(text.Text) && text.Text.Length > 0));
+                    texts.AddRange(footer.Descendants<Text>().Where(text =>
+                        !String.IsNullOrEmpty(text.Text) && text.Text.Length > 0));
                 }
 
                 if (ignoreHidden)
@@ -76,13 +79,14 @@ namespace DocumentTranslatorApi
                     texts.RemoveAll(t => t.Parent.Descendants<Vanish>().Any());
                 }
 
-                // Extract Text for Translation
+                // Extract text strings for translation
                 var values = texts.Select(text => text.Text).ToArray();
 
                 // Do Translation
                 var translations = await textTranslator.TranslateTexts(values, to, from);
 
-                // Apply translations to document
+                // Apply translations to document by iterating through both lists and
+                // replacing the original with its translation
                 using (var textsEnumerator = texts.GetEnumerator())
                 {
                     using (var translationsEnumerator = translations.GetEnumerator())

@@ -22,6 +22,7 @@ namespace DocumentTranslatorApi
         {
             using (SpreadsheetDocument document = SpreadsheetDocument.Open(memoryStream, true))
             {
+                // Find all string items in the spreadsheet
                 List<DocumentFormat.OpenXml.Spreadsheet.Text> texts = new List<DocumentFormat.OpenXml.Spreadsheet.Text>();
                 foreach (SharedStringItem si in document.WorkbookPart.SharedStringTablePart.SharedStringTable.Elements<SharedStringItem>())
                 {
@@ -38,9 +39,14 @@ namespace DocumentTranslatorApi
                     }
                 }
 
+                // Extract text for translation
                 var textValues = texts.Select(item => item.Text);
+
+                // Do the translation
                 var translations = await textTranslator.TranslateTexts(textValues, to, from);
 
+                // Apply translations to document by iterating through both lists and
+                // replacing the original text with its translation
                 using (var textsEnumerator = texts.GetEnumerator())
                 {
                     using (var translationEnumerator = translations.GetEnumerator())
@@ -66,7 +72,7 @@ namespace DocumentTranslatorApi
                     table.Table.Save();
                 }
 
-                // Update comments
+                // Find all comments
                 WorkbookPart workBookPart = document.WorkbookPart;
                 List<DocumentFormat.OpenXml.Spreadsheet.Comment> comments = new List<DocumentFormat.OpenXml.Spreadsheet.Comment>();
                 foreach (var commentsPart in workBookPart.WorksheetParts.SelectMany(sheet => sheet.GetPartsOfType<WorksheetCommentsPart>()))
@@ -74,21 +80,24 @@ namespace DocumentTranslatorApi
                     comments.AddRange(commentsPart.Comments.CommentList.Cast<Comment>());
                 }
 
+                // Extract text for translation
                 var commentValues = comments.Select(item => item.InnerText).ToArray();
+
+                // Do the translation
                 var translatedComments = await textTranslator.TranslateTexts(commentValues, to, from);
 
+                // Apply translations to document by iterating through both lists and
+                // replacing the original comment text with its translation
                 using (var commentsEnumerator = comments.GetEnumerator())
                 {
                     using (var translationEnumerator = translations.GetEnumerator())
                     {
                         while (commentsEnumerator.MoveNext() && translationEnumerator.MoveNext())
                         {
+                            var text = translationEnumerator.Current;
                             commentsEnumerator.Current.CommentText = new CommentText
                             {
-                                Text = new DocumentFormat.OpenXml.Spreadsheet.Text
-                                {
-                                    Text = translationEnumerator.Current
-                                }
+                                Text = new DocumentFormat.OpenXml.Spreadsheet.Text { Text = text }
                             };
                         }
                     }
