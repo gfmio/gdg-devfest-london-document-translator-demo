@@ -76,49 +76,24 @@ namespace DocumentTranslatorApi
                     texts.RemoveAll(t => t.Parent.Descendants<Vanish>().Any());
                 }
 
-                var exceptions = new Queue<Exception>();
-
                 // Extract Text for Translation
-                var batch = texts.Select(text => text.Text);
+                var values = texts.Select(text => text.Text).ToArray();
 
                 // Do Translation
-                var batches = Splitter.SplitList(batch, textTranslator.MaxElements, textTranslator.MaxRequestSize);
+                var translations = await textTranslator.TranslateTexts(values, to, from);
 
-                for (var l = 0; l < batches.Count(); l++)
+                // Apply translations to document
+                using (var textsEnumerator = texts.GetEnumerator())
                 {
-                    try
+                    using (var translationsEnumerator = translations.GetEnumerator())
                     {
-                        var translationOutput = await textTranslator.TranslateTextArray(
-                            batches[l].ToArray(),
-                            to,
-                            from);
-                        int batchStartIndexInDocument = 0;
-                        for (int i = 0; i < l; i++)
+                        while (textsEnumerator.MoveNext() && translationsEnumerator.MoveNext())
                         {
-                            batchStartIndexInDocument = batchStartIndexInDocument + batches[i].Count();
-                        }
-
-                        // Apply translated batch to document
-                        for (int j = 0; j < translationOutput.Length; j++)
-                        {
-                            int indexInDocument = j + batchStartIndexInDocument + 1;
-                            var newValue = translationOutput[j];
-                            texts.Take(indexInDocument).Last().Text = newValue;
+                            textsEnumerator.Current.Text = translationsEnumerator.Current;
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        exceptions.Enqueue(ex);
-                    }
-                };
-
-                // Throw the exceptions here after the loop completes.
-                if (exceptions.Count > 0)
-                {
-                    throw new AggregateException(exceptions);
                 }
             }
-
         }
     }
 }

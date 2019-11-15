@@ -16,69 +16,40 @@ namespace DocumentTranslatorApi
         ///
         /// Based on method `ProcessExcelDocument` (line 424 onwards) in
         /// TranslationAssistant.Business/DocumentTranslationManager.cs in
-        /// MicrosoftTranslator/DocumentTranslator 
+        /// MicrosoftTranslator/DocumentTranslator
         /// </summary>
         public async Task TranslateDocument(MemoryStream memoryStream, ITextTranslator textTranslator, string to, string from = null)
         {
             using (SpreadsheetDocument document = SpreadsheetDocument.Open(memoryStream, true))
             {
-                List<DocumentFormat.OpenXml.Spreadsheet.Text> lstTexts = new List<DocumentFormat.OpenXml.Spreadsheet.Text>();
+                List<DocumentFormat.OpenXml.Spreadsheet.Text> texts = new List<DocumentFormat.OpenXml.Spreadsheet.Text>();
                 foreach (SharedStringItem si in document.WorkbookPart.SharedStringTablePart.SharedStringTable.Elements<SharedStringItem>())
                 {
                     if (si != null && si.Text != null && !String.IsNullOrEmpty(si.Text.Text))
                     {
-                        lstTexts.Add(si.Text);
+                        texts.Add(si.Text);
                     }
                     else if (si != null)
                     {
-                        lstTexts
+                        texts
                             .AddRange(si.Elements<DocumentFormat.OpenXml.Spreadsheet.Run>()
                             .Where(item => (item != null && item.Text != null && !String.IsNullOrEmpty(item.Text.Text)))
                             .Select(item => item.Text));
                     }
                 }
 
-                var batch = lstTexts.Select(item => item.Text);
-                IEnumerable<string> values = batch as string[] ?? batch.ToArray();
+                var textValues = texts.Select(item => item.Text);
+                var translations = await textTranslator.TranslateTexts(textValues, to, from);
 
-                var batches = Splitter.SplitList(values, textTranslator.MaxElements, textTranslator.MaxRequestSize);
-                string[] translated = new string[values.Count()];
-
-                var exceptions = new Queue<Exception>();
-
-                for (var l = 0; l < batches.Count(); l++)
+                using (var textsEnumerator = texts.GetEnumerator())
                 {
-                    try
+                    using (var translationEnumerator = translations.GetEnumerator())
                     {
-                        var translationOutput = await textTranslator.TranslateTextArray(
-                            batches[l].ToArray(),
-                            to,
-                            from);
-
-                        int batchStartIndexInDocument = 0;
-                        for (int i = 0; i < l; i++)
+                        while (textsEnumerator.MoveNext() && translationEnumerator.MoveNext())
                         {
-                            batchStartIndexInDocument = batchStartIndexInDocument + batches[i].Count();
-                        }
-
-                        // Apply translated batch to document
-                        for (int j = 0; j < translationOutput.Length; j++)
-                        {
-                            int indexInDocument = j + batchStartIndexInDocument + 1;
-                            var newValue = translationOutput[j];
-                            translated[indexInDocument - 1] = newValue;
-                            lstTexts[indexInDocument - 1].Text = newValue;
+                            textsEnumerator.Current.Text = translationEnumerator.Current;
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        exceptions.Enqueue(ex);
-                    }
-                }
-
-                if (exceptions.Count > 0)
-                {
-                    throw new AggregateException(exceptions);
                 }
 
                 // Refresh all the shared string references.
@@ -89,7 +60,7 @@ namespace DocumentTranslatorApi
                 {
                     foreach (TableColumn col in table.Table.TableColumns)
                     {
-                        col.Name = translated[int.Parse(col.Id) - 1];
+                        col.Name = translations.Take(int.Parse(col.Id)).Last();
                     }
 
                     table.Table.Save();
@@ -97,58 +68,32 @@ namespace DocumentTranslatorApi
 
                 // Update comments
                 WorkbookPart workBookPart = document.WorkbookPart;
-                List<DocumentFormat.OpenXml.Spreadsheet.Comment> lstComments = new List<DocumentFormat.OpenXml.Spreadsheet.Comment>();
-                foreach (WorksheetCommentsPart commentsPart in workBookPart.WorksheetParts.SelectMany(sheet => sheet.GetPartsOfType<WorksheetCommentsPart>()))
+                List<DocumentFormat.OpenXml.Spreadsheet.Comment> comments = new List<DocumentFormat.OpenXml.Spreadsheet.Comment>();
+                foreach (var commentsPart in workBookPart.WorksheetParts.SelectMany(sheet => sheet.GetPartsOfType<WorksheetCommentsPart>()))
                 {
-                    lstComments.AddRange(commentsPart.Comments.CommentList.Cast<Comment>());
+                    comments.AddRange(commentsPart.Comments.CommentList.Cast<Comment>());
                 }
 
-                var batchComments = lstComments.Select(item => item.InnerText);
-                var batchesComments = Splitter.SplitList(batchComments, textTranslator.MaxElements, textTranslator.MaxRequestSize);
-                string[] translatedComments = new string[batchesComments.Count()];
+                var commentValues = comments.Select(item => item.InnerText).ToArray();
+                var translatedComments = await textTranslator.TranslateTexts(commentValues, to, from);
 
-                for (var l = 0; l < batchesComments.Count(); l++)
+                using (var commentsEnumerator = comments.GetEnumerator())
                 {
-                    try
+                    using (var translationEnumerator = translations.GetEnumerator())
                     {
-                        var translationOutput = await textTranslator.TranslateTextArray(
-                                batchesComments[l].ToArray(),
-                                to,
-                                from);
-                        int batchStartIndexInDocument = 0;
-                        for (int i = 0; i < l; i++)
+                        while (commentsEnumerator.MoveNext() && translationEnumerator.MoveNext())
                         {
-                            batchStartIndexInDocument = batchStartIndexInDocument + batches[i].Count();
-                        }
-
-                        for (int j = 0; j < translationOutput.Length; j++)
-                        {
-                            int indexInDocument = j + batchStartIndexInDocument + 1;
-                            var currentSharedStringItem = lstComments.Take(indexInDocument).Last();
-                            var newValue = translationOutput[j];
-                            if (translatedComments.Count() > indexInDocument - 1)
+                            commentsEnumerator.Current.CommentText = new CommentText
                             {
-                                translatedComments[indexInDocument - 1] = newValue;
-                            }
-                            currentSharedStringItem.CommentText = new CommentText
-                            {
-                                Text = new DocumentFormat.OpenXml.Spreadsheet.Text { Text = newValue }
+                                Text = new DocumentFormat.OpenXml.Spreadsheet.Text
+                                {
+                                    Text = translationEnumerator.Current
+                                }
                             };
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        exceptions.Enqueue(ex);
-                    }
-                }
-
-                // Throw the exceptions here after the loop completes. 
-                if (exceptions.Count > 0)
-                {
-                    throw new AggregateException(exceptions);
                 }
             }
-
         }
     }
 }

@@ -26,8 +26,6 @@ namespace DocumentTranslatorApi
                 StringValues fromValues;
                 req.Form.TryGetValue("from", out fromValues);
                 var from = fromValues.ToString();
-                // var from = fromValues.Count == 0 ? null : fromValues.ToString();
-                Console.WriteLine(from);
 
                 // To
                 StringValues toValues;
@@ -37,7 +35,6 @@ namespace DocumentTranslatorApi
                     throw new Exception("Missing field `to`");
                 }
                 var to = toValues.ToString();
-                Console.WriteLine(to);
 
                 // File
                 if (req.Form.Files.Count == 0)
@@ -66,6 +63,7 @@ namespace DocumentTranslatorApi
             }
             catch (Exception error)
             {
+                Console.Error.WriteLine(error);
                 return new ObjectResult(new { error = error }) { StatusCode = 500 };
             }
         }
