@@ -80,7 +80,7 @@ namespace DocumentTranslatorApi
                 }
 
                 // Extract text strings for translation
-                var values = texts.Select(text => text.Text).ToArray();
+                var values = texts.Select(text => text.Text);
 
                 // Do Translation
                 var translations = await textTranslator.TranslateTexts(values, to, from);
