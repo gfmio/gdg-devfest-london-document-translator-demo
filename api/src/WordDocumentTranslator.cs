@@ -17,7 +17,7 @@ namespace DocumentTranslatorApi
         }
 
         /// <summary>
-        /// Translates an PowerPoint document
+        /// Translates an Word document
         ///
         /// Based on method `ProcessWordDocument` (line 726 onwards) in
         /// TranslationAssistant.Business/DocumentTranslationManager.cs in
